@@ -18,7 +18,12 @@ export const Square = (props: SquareProps) => {
   const color = (row + col) % 2 === 0 ? 'white' : 'black';
   return (
     <div className={"square square-color-" + color} style={{gridArea: gridArea}}>
-      {piece}
+      {piece && 
+        <div>
+          <img src={piece.image} alt={piece.name} />
+          <span>{piece.name}</span>
+        </div>
+      }
     </div>
   );
 }
