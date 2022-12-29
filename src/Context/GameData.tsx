@@ -1,4 +1,4 @@
-import { createContext } from 'react';
+import { createContext } from "react";
 
 export interface Piece {
   name: string;
@@ -34,19 +34,27 @@ const piecePos = [
 for (let row = 0; row < 8; row++) {
   data.piecesByLocation[row] = [];
   for (let col = 0; col < 8; col++) {
-    const color = row > 2 ? 'white' : 'black';
+    const color = row > 2 ? "white" : "black";
     if (row === 1 || row === 6) {
       const piece = {
-        name: 'Pawn', color, row, col,
+        name: "Pawn",
+        color,
+        row,
+        col,
         image: `images/${color[0]}P.svg`,
       };
       data.piecesByLocation[row][col] = piece;
     }
     if (row === 0 || row === 7) {
       for (let col = 0; col < 8; col++) {
+        const name = piecePos[col];
+        const imageName = name === "Knight" ? "N" : name[0];
         const piece = {
-          name: piecePos[col], color, row, col,
-          image: `images/${color[0]}${piecePos[col][0]}.svg`,
+          name: piecePos[col],
+          color,
+          row,
+          col,
+          image: `images/${color[0]}${imageName}.svg`,
         };
         data.piecesByLocation[row][col] = piece;
       }
@@ -57,7 +65,9 @@ for (let row = 0; row < 8; row++) {
 export const GameDataContext = createContext<GameData>(data);
 
 const GameDataProvider = ({ children }: any) => {
-  return <GameDataContext.Provider value={data}>{children}</GameDataContext.Provider>;
-}
+  return (
+    <GameDataContext.Provider value={data}>{children}</GameDataContext.Provider>
+  );
+};
 
 export default GameDataProvider;
