@@ -48,12 +48,19 @@
 .square {
   width: 100px;
   height: 100px;
+  border: 1px solid white;
 }
 
 .square-color-white {
-  background-color: #D8C2BD;
+  background-color: #d8c2bd;
 }
 
 .square-color-black {
-  background-color: #805B53;
+  background-color: #805b53;
+}
+
+.allowed-move .square-content {
+  background-color: #61dafb44;
+  height: 100%;
+  width: 100%;
 }
