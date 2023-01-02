@@ -24,7 +24,7 @@ export interface Piece {
 
 export interface GameDataState {
   capturedPieces: Piece[];
-  piecesByLocation: Piece[][];
+  piecesByLocation: Array<Array<Piece | null>>;
   selectedPiece: Piece | null;
   allowedMoves: Position[];
 }
@@ -59,7 +59,7 @@ export const getInitialGameState = () => {
   ];
 
   for (let row = 0; row < 8; row++) {
-    data.piecesByLocation[row] = [];
+    data.piecesByLocation[row] = Array.from({ length: 8 }, () => null);
     for (let col = 0; col < 8; col++) {
       const color = row > 2 ? "white" : "black";
       if (row === 1 || row === 6) {
