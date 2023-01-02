@@ -20,7 +20,7 @@ export const Square = (props: SquareProps) => {
         movePiece(selectedPiece, { row, col }, data);
         return;
       }
-      if (clickedPiece) {
+      if (clickedPiece && clickedPiece.color === data.state.activePlayer) {
         data.actions.setState({
           ...data.state,
           selectedPiece: clickedPiece,
@@ -42,7 +42,6 @@ export const Square = (props: SquareProps) => {
         {piece && (
           <div>
             <img src={piece.image} alt={piece.name} />
-            <span>{piece.name}</span>
           </div>
         )}
       </div>

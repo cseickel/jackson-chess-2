@@ -159,13 +159,13 @@ const getPawnMoves = (piece: Piece, state: GameDataState) => {
     state.piecesByLocation[piece.position.row + dir][piece.position.col + 1];
   if (pieceAtUpRight && pieceAtUpRight.color !== piece.color) {
     moves.push({
-      row: piece.position.row + 1,
+      row: piece.position.row + dir,
       col: piece.position.col + 1,
     });
   }
   if (pieceAtUpLeft && pieceAtUpLeft.color !== piece.color) {
     moves.push({
-      row: piece.position.row + 1,
+      row: piece.position.row + dir,
       col: piece.position.col - 1,
     });
   }
@@ -216,8 +216,9 @@ export const getAllowedMoves = (piece: Piece, state: GameDataState) => {
 export const movePiece = (piece: Piece, dest: Position, data: GameData) => {
   const { row, col } = dest;
   const pieceAtDest = data.state.piecesByLocation[row][col];
-  const newState = {
+  const newState: GameDataState = {
     ...data.state,
+    activePlayer: data.state.activePlayer === "white" ? "black" : "white",
     selectedPiece: null,
     allowedMoves: [],
   };
