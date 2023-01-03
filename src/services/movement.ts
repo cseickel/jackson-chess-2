@@ -1,10 +1,12 @@
 import {
   GameData,
   GameDataState,
+  getPositionOfPiece,
   Piece,
   PieceName,
   Position,
 } from "../Context/GameData";
+import { deepCopy } from "../utils/deep-copy";
 
 export interface Range {
   min: number;
@@ -16,6 +18,10 @@ enum CollisionType {
   Friendly,
   Enemy,
   OutOfBounds,
+}
+
+interface PieceWithPosition extends Piece {
+  position: Position;
 }
 
 const filterOutOfBoundsMoves = (moves: Position[]) => {
@@ -36,7 +42,7 @@ const range = (start: number, end: number) => {
 };
 
 const getCollisionType = (
-  piece: Piece,
+  piece: PieceWithPosition,
   state: GameDataState,
   pos: Position
 ) => {
@@ -55,7 +61,7 @@ const getCollisionType = (
 };
 
 const maybeAddMove = (
-  piece: Piece,
+  piece: PieceWithPosition,
   state: GameDataState,
   moves: Position[],
   pos: Position,
@@ -72,7 +78,7 @@ const maybeAddMove = (
 };
 
 const getStraightMoves = (
-  piece: Piece,
+  piece: PieceWithPosition,
   allowedRange: Range,
   state: GameDataState,
   canAttack = true
@@ -88,7 +94,7 @@ const getStraightMoves = (
 };
 
 const getSidewaysMoves = (
-  piece: Piece,
+  piece: PieceWithPosition,
   allowedRange: Range,
   state: GameDataState
 ) => {
@@ -103,7 +109,7 @@ const getSidewaysMoves = (
 };
 
 const getDiagnalMoves = (
-  piece: Piece,
+  piece: PieceWithPosition,
   allowedRange: Range,
   state: GameDataState
 ) => {
@@ -123,7 +129,7 @@ const getDiagnalMoves = (
   return filterOutOfBoundsMoves(moves);
 };
 
-const getKnightMoves = (piece: Piece, state: GameDataState) => {
+const getKnightMoves = (piece: PieceWithPosition, state: GameDataState) => {
   const maybeMoves = new Array<Position>();
   maybeMoves.push({ row: piece.position.row + 2, col: piece.position.col + 1 });
   maybeMoves.push({ row: piece.position.row + 2, col: piece.position.col - 1 });
@@ -141,7 +147,73 @@ const getKnightMoves = (piece: Piece, state: GameDataState) => {
   return moves;
 };
 
-const getPawnMoves = (piece: Piece, state: GameDataState) => {
+const getPriorBoardState = (state: GameDataState) => {
+  let index = state.history.length - 1;
+  while (index >= 0) {
+    const priorState = state.history[index];
+    if (
+      !priorState.isMoveInProgress &&
+      priorState.activePlayer !== state.activePlayer
+    ) {
+      return priorState;
+    }
+    index--;
+  }
+  return null;
+};
+
+const canEnPassant = (piece: PieceWithPosition, state: GameDataState) => {
+  const lastMove = getPriorBoardState(state);
+  if (!lastMove) {
+    return false;
+  }
+
+  for (let testSide of [-1, 1]) {
+    const otherPiece =
+      state.piecesByLocation[piece.position.row][piece.position.col + testSide];
+    if (
+      otherPiece &&
+      otherPiece.name === PieceName.Pawn &&
+      otherPiece.color !== piece.color
+    ) {
+      const otherPiecePosition = getPositionOfPiece(otherPiece, state);
+      if (!otherPiecePosition) {
+        throw new Error(
+          "Could not find position of other pawn when testing en passant"
+        );
+      }
+      const otherPiecePriorPosition = getPositionOfPiece(otherPiece, lastMove);
+      if (!otherPiecePriorPosition) {
+        console.log("otherPiecePosition is null", otherPiece, lastMove);
+        throw new Error(
+          "otherPiecePriorPosition is null when testing en passant"
+        );
+      }
+      if (
+        (otherPiece.initialPosition.row === 1 &&
+          otherPiecePosition.row === 3) ||
+        (otherPiece.initialPosition.row === 6 && otherPiecePosition.row === 4)
+      ) {
+        // Maybe we can en passant, if the last move was a two square move
+        if (otherPiecePriorPosition.row === otherPiece.initialPosition.row) {
+          if (otherPiece.initialPosition.row === 1) {
+            return {
+              row: otherPiecePosition.row - 1,
+              col: otherPiecePosition.col,
+            };
+          } else {
+            return {
+              row: otherPiecePosition.row + 1,
+              col: otherPiecePosition.col,
+            };
+          }
+        }
+      }
+    }
+  }
+};
+
+const getPawnMoves = (piece: PieceWithPosition, state: GameDataState) => {
   const moves = new Array<Position>();
   const dir = piece.initialPosition.row < 4 ? 1 : -1;
   const pos = { row: piece.position.row + dir, col: piece.position.col };
@@ -169,10 +241,22 @@ const getPawnMoves = (piece: Piece, state: GameDataState) => {
       col: piece.position.col - 1,
     });
   }
+
+  // En passant
+  const enPassant = canEnPassant(piece, state);
+  if (enPassant) {
+    moves.push(enPassant);
+  }
+
   return moves;
 };
 
-export const getAllowedMoves = (piece: Piece, state: GameDataState) => {
+export const getAllowedMoves = (_piece: Piece, state: GameDataState) => {
+  const piecePosition = getPositionOfPiece(_piece, state);
+  if (!piecePosition) {
+    throw new Error("Piece not found");
+  }
+  const piece = { ..._piece, position: piecePosition };
   const allAllowedMoves = [];
   if (piece.name === PieceName.Pawn) {
     allAllowedMoves.push(...getPawnMoves(piece, state));
@@ -213,20 +297,41 @@ export const getAllowedMoves = (piece: Piece, state: GameDataState) => {
   return allAllowedMoves;
 };
 
-export const movePiece = (piece: Piece, dest: Position, data: GameData) => {
+export const movePiece = (_piece: Piece, dest: Position, data: GameData) => {
+  const piecePosition = getPositionOfPiece(_piece, data.state);
+  if (!piecePosition) {
+    throw new Error("Piece not found");
+  }
+  const piece = { ..._piece, position: piecePosition };
   const { row, col } = dest;
   const pieceAtDest = data.state.piecesByLocation[row][col];
   const newState: GameDataState = {
-    ...data.state,
+    ...deepCopy(data.state),
     activePlayer: data.state.activePlayer === "white" ? "black" : "white",
     selectedPiece: null,
     allowedMoves: [],
+    isMoveInProgress: false,
   };
   if (pieceAtDest) {
     newState.capturedPieces.push(pieceAtDest);
+  } else {
+    if (piece.name === PieceName.Pawn && piece.position.col !== col) {
+      // This has to be an en passant
+      const otherPawn = data.state.piecesByLocation[piecePosition.row][col];
+      if (!otherPawn) {
+        throw new Error("En passant but no other pawn found");
+      }
+      if (otherPawn.name !== PieceName.Pawn) {
+        throw new Error("En passant but other piece is not a pawn");
+      }
+      if (otherPawn.color === piece.color) {
+        throw new Error("En passant but other pawn is same color");
+      }
+      newState.capturedPieces.push(otherPawn);
+      newState.piecesByLocation[piecePosition.row][col] = null;
+    }
   }
   newState.piecesByLocation[piece.position.row][piece.position.col] = null;
   newState.piecesByLocation[row][col] = piece;
-  piece.position = { row, col };
   data.actions.setState(newState);
 };

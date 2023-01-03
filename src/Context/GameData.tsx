@@ -18,7 +18,6 @@ export interface Piece {
   name: PieceName;
   color: string;
   image: string;
-  position: Position;
   initialPosition: Position;
 }
 
@@ -28,11 +27,14 @@ export interface GameDataState {
   activePlayer: "white" | "black";
   selectedPiece: Piece | null;
   allowedMoves: Position[];
+  history: GameDataState[];
+  isMoveInProgress: boolean;
 }
 
 export interface GameDataContextActions {
   setState: (data: GameDataState) => void;
   resetGame: () => void;
+  undo: () => void;
 }
 
 export interface GameData {
@@ -47,6 +49,8 @@ export const getInitialGameState = () => {
     piecesByLocation: [],
     selectedPiece: null,
     allowedMoves: new Array<Position>(),
+    history: [],
+    isMoveInProgress: false,
   };
 
   const piecePos = [
@@ -95,10 +99,38 @@ export const getInitialGameState = () => {
   return data;
 };
 
+export const getPositionOfPiece = (piece: Piece, state: GameDataState) => {
+  const tRow = piece.initialPosition.row;
+  const tCol = piece.initialPosition.col;
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const currentPiece = state.piecesByLocation[row][col];
+      if (
+        currentPiece?.initialPosition.row === tRow &&
+        currentPiece?.initialPosition.col === tCol
+      ) {
+        return { row, col };
+      }
+    }
+  }
+  return null;
+};
+
 export const GameDataContext = createContext<GameData>(null as any);
 
 const GameDataProvider = ({ children }: any) => {
   const [state, setState] = useState<GameDataState>(getInitialGameState());
+  const setStateWithHistory = useCallback(
+    (data: GameDataState) => {
+      setState((prevState) => {
+        return {
+          ...data,
+          history: [...prevState.history, prevState],
+        };
+      });
+    },
+    [setState]
+  );
 
   const resetGame = useCallback(() => {
     setState(getInitialGameState());
@@ -106,11 +138,18 @@ const GameDataProvider = ({ children }: any) => {
 
   const data = useMemo(() => {
     const actions: GameDataContextActions = {
-      setState,
+      setState: setStateWithHistory,
       resetGame,
+      undo: () => {
+        const moves = state.history.filter((x) => x.allowedMoves.length === 0);
+        if (moves.length > 0) {
+          const priorState = moves[moves.length - 1];
+          setState(priorState);
+        }
+      },
     };
     return { state, actions };
-  }, [state, setState, resetGame]);
+  }, [state, setState, setStateWithHistory, resetGame]);
 
   return (
     <GameDataContext.Provider value={data}>{children}</GameDataContext.Provider>

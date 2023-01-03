@@ -23,6 +23,7 @@ export const Square = (props: SquareProps) => {
       if (clickedPiece && clickedPiece.color === data.state.activePlayer) {
         data.actions.setState({
           ...data.state,
+          isMoveInProgress: true,
           selectedPiece: clickedPiece,
           allowedMoves: getAllowedMoves(clickedPiece, data.state),
         });

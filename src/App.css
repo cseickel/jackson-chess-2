@@ -1,5 +1,6 @@
 .App {
   text-align: center;
+  cursor: "pointer";
 }
 
 .App-logo {
@@ -44,12 +45,16 @@
 }
 
 .actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
   margin: 20px;
 }
 
 .actions button {
   font-size: 1.5em;
+  margin: 10px;
 }
 
 .status {
