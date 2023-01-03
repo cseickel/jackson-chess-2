@@ -2,6 +2,7 @@ import {
   GameData,
   GameDataState,
   getPositionOfPiece,
+  getPriorBoardState,
   Piece,
   PieceName,
   Position,
@@ -145,21 +146,6 @@ const getKnightMoves = (piece: PieceWithPosition, state: GameDataState) => {
     maybeAddMove(piece, state, moves, maybeMove, true);
   }
   return moves;
-};
-
-const getPriorBoardState = (state: GameDataState) => {
-  let index = state.history.length - 1;
-  while (index >= 0) {
-    const priorState = state.history[index];
-    if (
-      !priorState.isMoveInProgress &&
-      priorState.activePlayer !== state.activePlayer
-    ) {
-      return priorState;
-    }
-    index--;
-  }
-  return null;
 };
 
 const canEnPassant = (piece: PieceWithPosition, state: GameDataState) => {
@@ -308,9 +294,6 @@ export const movePiece = (_piece: Piece, dest: Position, data: GameData) => {
   const newState: GameDataState = {
     ...deepCopy(data.state),
     activePlayer: data.state.activePlayer === "white" ? "black" : "white",
-    selectedPiece: null,
-    allowedMoves: [],
-    isMoveInProgress: false,
   };
   if (pieceAtDest) {
     newState.capturedPieces.push(pieceAtDest);

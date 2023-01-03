@@ -1,36 +1,15 @@
-import { Component, useCallback, useContext } from "react";
-import { GameDataContext, Piece } from "../../Context/GameData";
-import { getAllowedMoves, movePiece } from "../../services/movement";
+import { Piece } from "../../Context/GameData";
 
 export interface SquareProps {
   row: number;
   col: number;
   piece: any;
   isAllowedMove: boolean;
+  clickHandler: (row: number, col: number, piece: Piece | null) => void;
 }
 
 export const Square = (props: SquareProps) => {
-  const data = useContext(GameDataContext);
-  const { row, col, piece, isAllowedMove } = props;
-  const clickHandler = useCallback(
-    (clickedPiece: Piece) => {
-      console.log("clicked", clickedPiece);
-      const selectedPiece = data.state.selectedPiece;
-      if (isAllowedMove && selectedPiece) {
-        movePiece(selectedPiece, { row, col }, data);
-        return;
-      }
-      if (clickedPiece && clickedPiece.color === data.state.activePlayer) {
-        data.actions.setState({
-          ...data.state,
-          isMoveInProgress: true,
-          selectedPiece: clickedPiece,
-          allowedMoves: getAllowedMoves(clickedPiece, data.state),
-        });
-      }
-    },
-    [data, isAllowedMove, row, col]
-  );
+  const { row, col, piece, isAllowedMove, clickHandler } = props;
 
   const gridArea = `${row + 1} / ${col + 1} / ${row + 2} / ${col + 2}`;
 
@@ -39,7 +18,10 @@ export const Square = (props: SquareProps) => {
     }`;
   return (
     <div className={className} style={{ gridArea: gridArea }}>
-      <div className="square-content" onClick={() => clickHandler(piece)}>
+      <div
+        className="square-content"
+        onClick={() => clickHandler(row, col, piece)}
+      >
         {piece && (
           <div>
             <img src={piece.image} alt={piece.name} />

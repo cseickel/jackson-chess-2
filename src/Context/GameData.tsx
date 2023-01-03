@@ -25,10 +25,7 @@ export interface GameDataState {
   capturedPieces: Piece[];
   piecesByLocation: Array<Array<Piece | null>>;
   activePlayer: "white" | "black";
-  selectedPiece: Piece | null;
-  allowedMoves: Position[];
   history: GameDataState[];
-  isMoveInProgress: boolean;
 }
 
 export interface GameDataContextActions {
@@ -42,15 +39,12 @@ export interface GameData {
   actions: GameDataContextActions;
 }
 
-export const getInitialGameState = () => {
+const getInitialGameState = () => {
   const data: GameDataState = {
     capturedPieces: [],
     activePlayer: "white",
     piecesByLocation: [],
-    selectedPiece: null,
-    allowedMoves: new Array<Position>(),
     history: [],
-    isMoveInProgress: false,
   };
 
   const piecePos = [
@@ -116,6 +110,18 @@ export const getPositionOfPiece = (piece: Piece, state: GameDataState) => {
   return null;
 };
 
+export const getPriorBoardState = (state: GameDataState) => {
+  let index = state.history.length - 1;
+  while (index >= 0) {
+    const priorState = state.history[index];
+    if (priorState.activePlayer !== state.activePlayer) {
+      return priorState;
+    }
+    index--;
+  }
+  return null;
+};
+
 export const GameDataContext = createContext<GameData>(null as any);
 
 const GameDataProvider = ({ children }: any) => {
@@ -141,9 +147,8 @@ const GameDataProvider = ({ children }: any) => {
       setState: setStateWithHistory,
       resetGame,
       undo: () => {
-        const moves = state.history.filter((x) => x.allowedMoves.length === 0);
-        if (moves.length > 0) {
-          const priorState = moves[moves.length - 1];
+        const priorState = getPriorBoardState(state);
+        if (priorState) {
           setState(priorState);
         }
       },

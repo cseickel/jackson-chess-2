@@ -1,23 +1,47 @@
-import { useContext, useMemo } from "react";
-import { GameDataContext } from "../../Context/GameData";
+import { useContext, useMemo, useState, useCallback } from "react";
+import { GameDataContext, Piece, Position } from "../../Context/GameData";
+import { getAllowedMoves, movePiece } from "../../services/movement";
 import { Square, SquareProps } from "./Sqaure";
 
 const Board = () => {
   const context = useContext(GameDataContext);
+  const [allowedMoves, setAllowedMoves] = useState<Position[]>([]);
+  const [selectedPiece, setSelectedPiece] = useState<Piece | null>(null);
+
+  const clickHandler = useCallback(
+    (row: number, col: number, clickedPiece: Piece | null) => {
+      console.log("clicked", clickedPiece);
+      const isAllowedMove = allowedMoves.some(
+        (pos: Position) => pos.row === row && pos.col === col
+      );
+      if (isAllowedMove && selectedPiece) {
+        movePiece(selectedPiece, { row, col }, context);
+        setSelectedPiece(null);
+        setAllowedMoves([]);
+        return;
+      }
+      if (clickedPiece && clickedPiece.color === context.state.activePlayer) {
+        setSelectedPiece(clickedPiece);
+        setAllowedMoves(getAllowedMoves(clickedPiece, context.state));
+      }
+    },
+    [allowedMoves, context, selectedPiece, setSelectedPiece, setAllowedMoves]
+  );
+
   const squares = useMemo(() => {
     const state = context.state;
     let squares = Array<SquareProps>();
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const piece = state.piecesByLocation[row][col];
-        const isAllowedMove = state.allowedMoves.some(
+        const isAllowedMove = allowedMoves.some(
           (x) => x.row === row && x.col === col
         );
-        squares.push({ row, col, piece, isAllowedMove });
+        squares.push({ row, col, piece, isAllowedMove, clickHandler });
       }
     }
     return squares;
-  }, [context]);
+  }, [context, allowedMoves]);
 
   return (
     <div className="board">
