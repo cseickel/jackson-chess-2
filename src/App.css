@@ -92,3 +92,9 @@
   height: 100%;
   width: 100%;
 }
+
+.in-check .square-content {
+  background-color: #aa3333;
+  height: 100%;
+  width: 100%;
+}

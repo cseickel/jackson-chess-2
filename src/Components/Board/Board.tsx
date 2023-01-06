@@ -1,6 +1,10 @@
 import { useContext, useMemo, useState, useCallback } from "react";
 import { GameDataContext, Piece, Position } from "../../Context/GameData";
-import { getAllowedMoves, movePiece } from "../../services/movement";
+import {
+  filterAllowedMoves,
+  getAllowedMoves,
+  movePiece,
+} from "../../services/movement";
 import { Square, SquareProps } from "./Sqaure";
 
 const Board = () => {
@@ -22,7 +26,13 @@ const Board = () => {
       }
       if (clickedPiece && clickedPiece.color === context.state.activePlayer) {
         setSelectedPiece(clickedPiece);
-        setAllowedMoves(getAllowedMoves(clickedPiece, context.state));
+        const allowedMoves = getAllowedMoves(clickedPiece, context);
+        const nonCheckingMoves = filterAllowedMoves(
+          clickedPiece,
+          allowedMoves,
+          context
+        );
+        setAllowedMoves(nonCheckingMoves);
       }
     },
     [allowedMoves, context, selectedPiece, setSelectedPiece, setAllowedMoves]
