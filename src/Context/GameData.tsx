@@ -27,6 +27,7 @@ export interface GameDataState {
   activePlayer: "white" | "black";
   history: GameDataState[];
   playersInCheck: Map<string, boolean>;
+  playersInCheckMate: Map<string, boolean>;
 }
 
 export interface GameDataContextActions {
@@ -47,6 +48,7 @@ const getInitialGameState = () => {
     piecesByLocation: [],
     history: [],
     playersInCheck: new Map<string, boolean>(),
+    playersInCheckMate: new Map<string, boolean>(),
   };
 
   const piecePos = [

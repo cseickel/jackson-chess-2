@@ -272,6 +272,7 @@ const applyMove = (
   const newData = { state: newState, actions: data.actions };
   newState.playersInCheck.set("black", isInCheck(newData, "black"));
   newState.playersInCheck.set("white", isInCheck(newData, "white"));
+  newState.playersInCheckMate = new Map<string, boolean>();
   return newState;
 };
 
@@ -282,6 +283,9 @@ export const movePiece = (_piece: Piece, dest: Position, data: GameData) => {
   }
   const piece = { ..._piece, position: piecePosition };
   const newState = applyMove(piece, dest, data);
+  if (newState.playersInCheck.get(newState.activePlayer)!) {
+    newState.playersInCheckMate.set(newState.activePlayer, true);
+  }
   data.actions.setState(newState);
 };
 
