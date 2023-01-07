@@ -9,6 +9,7 @@ import {
 } from "../Context/GameData";
 import { deepCopy } from "../utils/deep-copy";
 import { isInCheck } from "./check";
+import { gameStateCache } from "./GameStateCache";
 
 export interface Range {
   min: number;
@@ -35,8 +36,10 @@ const filterOutOfBoundsMoves = (moves: Position[]) => {
 const range = (start: number, end: number) => {
   let result: Array<number>;
   if (end >= start) {
+    end = end + 1;
     result = Array.from({ length: end - start }, (_, k) => k + start);
   } else {
+    end = end - 1;
     result = Array.from({ length: start - end }, (_, k) => start - k);
   }
   return result;
@@ -202,8 +205,8 @@ const getPawnMoves = (piece: PieceWithPosition, state: GameDataState) => {
   const moves = new Array<Position>();
   const dir = piece.initialPosition.row < 4 ? 1 : -1;
   const pos = { row: piece.position.row + dir, col: piece.position.col };
-  maybeAddMove(piece, state, moves, pos, false);
-  if (piece.position.row === piece.initialPosition.row) {
+  const canMoveOne = maybeAddMove(piece, state, moves, pos, false);
+  if (canMoveOne && piece.position.row === piece.initialPosition.row) {
     // first move
     const pos = { row: piece.position.row + dir * 2, col: piece.position.col };
     maybeAddMove(piece, state, moves, pos, false);
@@ -269,10 +272,10 @@ const applyMove = (
   newState.piecesByLocation[piece.position.row][piece.position.col] = null;
   newState.piecesByLocation[row][col] = piece;
   newState.playersInCheck = new Map<string, boolean>();
+  newState.playersInCheckMate = new Map<string, boolean>();
   const newData = { state: newState, actions: data.actions };
   newState.playersInCheck.set("black", isInCheck(newData, "black"));
   newState.playersInCheck.set("white", isInCheck(newData, "white"));
-  newState.playersInCheckMate = new Map<string, boolean>();
   return newState;
 };
 
@@ -284,7 +287,7 @@ export const movePiece = (_piece: Piece, dest: Position, data: GameData) => {
   const piece = { ..._piece, position: piecePosition };
   const newState = applyMove(piece, dest, data);
   if (newState.playersInCheck.get(newState.activePlayer)!) {
-    newState.playersInCheckMate.set(newState.activePlayer, true);
+    newState.playersInCheck.set(newState.activePlayer, true);
   }
   data.actions.setState(newState);
 };
@@ -333,13 +336,15 @@ export const getAllowedMoves = (_piece: Piece, data: GameData) => {
     allAllowedMoves.push(
       ...getSidewaysMoves(piece, { min: -1, max: -1 }, state)
     );
+    allAllowedMoves.push(...getStraightMoves(piece, { min: 1, max: 1 }, state));
     allAllowedMoves.push(
-      ...getStraightMoves(piece, { min: -1, max: 1 }, state)
+      ...getStraightMoves(piece, { min: -1, max: -1 }, state)
     );
     allAllowedMoves.push(...getDiagnalMoves(piece, { min: 1, max: 1 }, state));
     allAllowedMoves.push(
       ...getDiagnalMoves(piece, { min: -1, max: -1 }, state)
     );
+    console.log("allAllowedMoves for king", allAllowedMoves);
   }
   return allAllowedMoves;
 };

@@ -1,5 +1,6 @@
 import { useContext, useMemo, useState, useCallback } from "react";
 import { GameDataContext, Piece, Position } from "../../Context/GameData";
+import { gameStateCache } from "../../services/GameStateCache";
 import {
   filterAllowedMoves,
   getAllowedMoves,
@@ -26,7 +27,10 @@ const Board = () => {
       }
       if (clickedPiece && clickedPiece.color === context.state.activePlayer) {
         setSelectedPiece(clickedPiece);
-        const allowedMoves = getAllowedMoves(clickedPiece, context);
+        const allowedMoves = gameStateCache.getAllowMoves(
+          context,
+          clickedPiece
+        );
         const nonCheckingMoves = filterAllowedMoves(
           clickedPiece,
           allowedMoves,

@@ -15,6 +15,7 @@ export interface Position {
 }
 
 export interface Piece {
+  id: string;
   name: PieceName;
   color: string;
   image: string;
@@ -69,6 +70,7 @@ const getInitialGameState = () => {
       if (row === 1 || row === 6) {
         const position = { row, col };
         const piece = {
+          id: `${color}-${PieceName.Pawn}-${row}-${col}`,
           name: PieceName.Pawn,
           color,
           position,
@@ -83,6 +85,7 @@ const getInitialGameState = () => {
           const imageName = name === "Knight" ? "N" : name[0];
           const position = { row, col };
           const piece = {
+            id: `${color}-${name}-${row}-${col}`,
             name: piecePos[col] as PieceName,
             color,
             position,
@@ -98,15 +101,10 @@ const getInitialGameState = () => {
 };
 
 export const getPositionOfPiece = (piece: Piece, state: GameDataState) => {
-  const tRow = piece.initialPosition.row;
-  const tCol = piece.initialPosition.col;
   for (let row = 0; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
       const currentPiece = state.piecesByLocation[row][col];
-      if (
-        currentPiece?.initialPosition.row === tRow &&
-        currentPiece?.initialPosition.col === tCol
-      ) {
+      if (currentPiece?.id === piece.id) {
         return { row, col };
       }
     }
