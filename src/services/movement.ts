@@ -4,7 +4,7 @@ import {
   getPositionOfPiece,
   getPriorBoardState,
   Piece,
-  PieceName,
+  PieceType,
   Position,
 } from "../Context/GameData";
 import { deepCopy } from "../utils/deep-copy";
@@ -161,7 +161,7 @@ const canEnPassant = (piece: PieceWithPosition, state: GameDataState) => {
       state.piecesByLocation[piece.position.row][piece.position.col + testSide];
     if (
       otherPiece &&
-      otherPiece.name === PieceName.Pawn &&
+      otherPiece.type === PieceType.Pawn &&
       otherPiece.color !== piece.color
     ) {
       const otherPiecePosition = getPositionOfPiece(otherPiece, state);
@@ -239,27 +239,29 @@ const getPawnMoves = (piece: PieceWithPosition, state: GameDataState) => {
   return moves;
 };
 
-const applyMove = (
+export const applyMove = (
   piece: PieceWithPosition,
   dest: Position,
-  data: GameData
+  data: GameData,
+  testForCheck = true
 ) => {
   const { row, col } = dest;
   const pieceAtDest = data.state.piecesByLocation[row][col];
   const newState: GameDataState = {
     ...deepCopy(data.state),
+    key: undefined,
     activePlayer: data.state.activePlayer === "white" ? "black" : "white",
   };
   if (pieceAtDest) {
     newState.capturedPieces.push(pieceAtDest);
   } else {
-    if (piece.name === PieceName.Pawn && piece.position.col !== col) {
+    if (piece.type === PieceType.Pawn && piece.position.col !== col) {
       // This has to be an en passant
       const otherPawn = data.state.piecesByLocation[piece.position.row][col];
       if (!otherPawn) {
         throw new Error("En passant but no other pawn found");
       }
-      if (otherPawn.name !== PieceName.Pawn) {
+      if (otherPawn.type !== PieceType.Pawn) {
         throw new Error("En passant but other piece is not a pawn");
       }
       if (otherPawn.color === piece.color) {
@@ -271,11 +273,17 @@ const applyMove = (
   }
   newState.piecesByLocation[piece.position.row][piece.position.col] = null;
   newState.piecesByLocation[row][col] = piece;
-  newState.playersInCheck = new Map<string, boolean>();
-  newState.playersInCheckMate = new Map<string, boolean>();
   const newData = { state: newState, actions: data.actions };
-  newState.playersInCheck.set("black", isInCheck(newData, "black"));
-  newState.playersInCheck.set("white", isInCheck(newData, "white"));
+  if (testForCheck) {
+    // this can cause infinite recursion if we don't limit it
+    newState.playerInCheck = isInCheck(newData, newData.state.activePlayer);
+    if (newState.playerInCheck) {
+      newState.playerInCheckMate = gameStateCache.getIsCheckMate(
+        newData,
+        newData.state.activePlayer
+      );
+    }
+  }
   return newState;
 };
 
@@ -286,19 +294,7 @@ export const movePiece = (_piece: Piece, dest: Position, data: GameData) => {
   }
   const piece = { ..._piece, position: piecePosition };
   const newState = applyMove(piece, dest, data);
-  if (newState.playersInCheck.get(newState.activePlayer)!) {
-    newState.playersInCheck.set(newState.activePlayer, true);
-  }
   data.actions.setState(newState);
-};
-
-const willMoveCauseCheck = (
-  piece: PieceWithPosition,
-  move: Position,
-  data: GameData
-) => {
-  const newState = applyMove(piece, move, data);
-  return newState.playersInCheck.get(piece.color) || false;
 };
 
 export const getAllowedMoves = (_piece: Piece, data: GameData) => {
@@ -309,19 +305,19 @@ export const getAllowedMoves = (_piece: Piece, data: GameData) => {
   }
   const piece = { ..._piece, position: piecePosition };
   const allAllowedMoves = [];
-  if (piece.name === PieceName.Pawn) {
+  if (piece.type === PieceType.Pawn) {
     allAllowedMoves.push(...getPawnMoves(piece, state));
   }
-  if (piece.name === PieceName.Knight) {
+  if (piece.type === PieceType.Knight) {
     allAllowedMoves.push(...getKnightMoves(piece, state));
   }
-  if (piece.name === PieceName.Bishop || piece.name === PieceName.Queen) {
+  if (piece.type === PieceType.Bishop || piece.type === PieceType.Queen) {
     allAllowedMoves.push(...getDiagnalMoves(piece, { min: 1, max: 8 }, state));
     allAllowedMoves.push(
       ...getDiagnalMoves(piece, { min: -1, max: -8 }, state)
     );
   }
-  if (piece.name === PieceName.Rook || piece.name === PieceName.Queen) {
+  if (piece.type === PieceType.Rook || piece.type === PieceType.Queen) {
     allAllowedMoves.push(...getSidewaysMoves(piece, { min: 1, max: 8 }, state));
     allAllowedMoves.push(
       ...getSidewaysMoves(piece, { min: -1, max: -8 }, state)
@@ -331,7 +327,7 @@ export const getAllowedMoves = (_piece: Piece, data: GameData) => {
       ...getStraightMoves(piece, { min: -1, max: -8 }, state)
     );
   }
-  if (piece.name === PieceName.King) {
+  if (piece.type === PieceType.King) {
     allAllowedMoves.push(...getSidewaysMoves(piece, { min: 1, max: 1 }, state));
     allAllowedMoves.push(
       ...getSidewaysMoves(piece, { min: -1, max: -1 }, state)
@@ -347,21 +343,4 @@ export const getAllowedMoves = (_piece: Piece, data: GameData) => {
     console.log("allAllowedMoves for king", allAllowedMoves);
   }
   return allAllowedMoves;
-};
-
-export const filterAllowedMoves = (
-  _piece: Piece,
-  moves: Position[],
-  data: GameData
-) => {
-  const piecePosition = getPositionOfPiece(_piece, data.state);
-  if (!piecePosition) {
-    throw new Error("Piece not found");
-  }
-  const piece = { ..._piece, position: piecePosition };
-  return moves.filter((move) => {
-    const newState = applyMove(piece, move, data);
-    const isInCheck = newState.playersInCheck.get(piece.color) || false;
-    return !isInCheck;
-  });
 };

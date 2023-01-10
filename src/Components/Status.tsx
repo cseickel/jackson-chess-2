@@ -4,7 +4,7 @@ import { GameDataContext } from "../Context/GameData";
 const Status = () => {
   const context = useContext(GameDataContext);
   const player = context.state.activePlayer;
-  const checkMate = context.state.playersInCheckMate.get(player) || false;
+  const checkMate = context.state.playerInCheckMate;
 
   return (
     <div className="status">

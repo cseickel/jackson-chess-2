@@ -1,12 +1,12 @@
 import { createContext, useCallback, useMemo, useState } from "react";
 
-export enum PieceName {
-  Pawn = "Pawn",
-  Rook = "Rook",
-  Knight = "Knight",
-  Bishop = "Bishop",
-  Queen = "Queen",
-  King = "King",
+export enum PieceType {
+  Pawn,
+  Rook,
+  Knight,
+  Bishop,
+  Queen,
+  King,
 }
 
 export interface Position {
@@ -14,21 +14,47 @@ export interface Position {
   col: number;
 }
 
-export interface Piece {
+export class Piece {
   id: string;
-  name: PieceName;
+  type: PieceType;
+  name: string;
   color: string;
   image: string;
   initialPosition: Position;
+
+  constructor(name: PieceType, color: string, initialPosition: Position) {
+    this.type = name;
+    this.color = color;
+    this.initialPosition = initialPosition;
+
+    this.name = PieceType[name].toString();
+    const imageName = this.type === PieceType.Knight ? "N" : this.name[0];
+    this.image = `images/${color[0]}${imageName}.svg`;
+    this.id = `${color}-${this.name}-${initialPosition.row}-${initialPosition.col}`;
+  }
+
+  public static fromId(id: string): Piece {
+    const parts = id.split("-");
+    if (parts.length !== 4) {
+      throw new Error("Invalid piece id: " + id);
+    }
+    const color = parts[0];
+    const name = PieceType[parts[1] as keyof typeof PieceType];
+    const row = parseInt(parts[2]);
+    const col = parseInt(parts[3]);
+    const piece = new Piece(name, color, { row, col });
+    return piece;
+  }
 }
 
 export interface GameDataState {
+  key?: string;
   capturedPieces: Piece[];
   piecesByLocation: Array<Array<Piece | null>>;
-  activePlayer: "white" | "black";
+  activePlayer: string;
   history: GameDataState[];
-  playersInCheck: Map<string, boolean>;
-  playersInCheckMate: Map<string, boolean>;
+  playerInCheck: boolean;
+  playerInCheckMate: boolean;
 }
 
 export interface GameDataContextActions {
@@ -48,19 +74,19 @@ const getInitialGameState = () => {
     activePlayer: "white",
     piecesByLocation: [],
     history: [],
-    playersInCheck: new Map<string, boolean>(),
-    playersInCheckMate: new Map<string, boolean>(),
+    playerInCheck: false,
+    playerInCheckMate: false,
   };
 
   const piecePos = [
-    "Rook",
-    "Knight",
-    "Bishop",
-    "Queen",
-    "King",
-    "Bishop",
-    "Knight",
-    "Rook",
+    PieceType.Rook,
+    PieceType.Knight,
+    PieceType.Bishop,
+    PieceType.Queen,
+    PieceType.King,
+    PieceType.Bishop,
+    PieceType.Knight,
+    PieceType.Rook,
   ];
 
   for (let row = 0; row < 8; row++) {
@@ -69,29 +95,14 @@ const getInitialGameState = () => {
       const color = row > 2 ? "white" : "black";
       if (row === 1 || row === 6) {
         const position = { row, col };
-        const piece = {
-          id: `${color}-${PieceName.Pawn}-${row}-${col}`,
-          name: PieceName.Pawn,
-          color,
-          position,
-          initialPosition: position,
-          image: `images/${color[0]}P.svg`,
-        };
+        const piece = new Piece(PieceType.Pawn, color, position);
         data.piecesByLocation[row][col] = piece;
       }
       if (row === 0 || row === 7) {
         for (let col = 0; col < 8; col++) {
           const name = piecePos[col];
-          const imageName = name === "Knight" ? "N" : name[0];
           const position = { row, col };
-          const piece = {
-            id: `${color}-${name}-${row}-${col}`,
-            name: piecePos[col] as PieceName,
-            color,
-            position,
-            initialPosition: position,
-            image: `images/${color[0]}${imageName}.svg`,
-          };
+          const piece = new Piece(name, color, position);
           data.piecesByLocation[row][col] = piece;
         }
       }

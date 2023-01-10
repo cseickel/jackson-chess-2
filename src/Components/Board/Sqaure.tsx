@@ -3,7 +3,7 @@ import {
   GameData,
   GameDataContext,
   Piece,
-  PieceName,
+  PieceType,
 } from "../../Context/GameData";
 
 export interface SquareProps {
@@ -25,8 +25,9 @@ export const Square = (props: SquareProps) => {
 
   if (isAllowedMove) className += " allowed-move";
 
-  if (piece && piece.name === PieceName.King) {
-    const isInCheck = data.state.playersInCheck.get(piece.color) || false;
+  if (piece && piece.type === PieceType.King) {
+    const isInCheck =
+      data.state.playerInCheck && piece.color === data.state.activePlayer;
     if (isInCheck) className += " in-check";
   }
 

@@ -1,24 +1,10 @@
-import {
-  GameData,
-  GameDataState,
-  getPositionOfPiece,
-  Piece,
-  PieceName,
-  Position,
-} from "../Context/GameData";
-import { filterAllowedMoves, getAllowedMoves } from "./movement";
+import { GameData, Piece, PieceType, Position } from "../Context/GameData";
 import { gameStateCache } from "./GameStateCache";
 
-const findKing = (state: GameDataState, color: "white" | "black") => {
+const findKing = (data: GameData, color: string) => {
   const initialPosition = { row: color === "white" ? 7 : 0, col: 4 };
-  const king: Piece = {
-    id: `${color}-king-{initialPosition.row}-{initialPosition.col}`,
-    name: PieceName.King,
-    image: "",
-    color,
-    initialPosition,
-  };
-  const kingPos = getPositionOfPiece(king, state);
+  const king = new Piece(PieceType.King, color, initialPosition);
+  const kingPos = gameStateCache.getPiecePosition(data, king);
   if (!kingPos) {
     throw new Error("King not found");
   }
@@ -41,16 +27,14 @@ const isChecking = (
   return false;
 };
 
-export const isInCheck = (
-  data: GameData,
-  color: "white" | "black"
-): boolean => {
+export const isInCheck = (data: GameData, color: string): boolean => {
   const cached = gameStateCache.getIsCheck(data, color);
   if (cached !== undefined) {
+    console.log("Using cached isCheck");
     return cached;
   }
   const state = data.state;
-  const king = findKing(state, color);
+  const king = findKing(data, color);
   console.log("king", king);
   const opponentColor = color === "white" ? "black" : "white";
   for (let row = 0; row < 8; row++) {
@@ -69,31 +53,4 @@ export const isInCheck = (
   }
   gameStateCache.setIsCheck(data, color, false);
   return false;
-};
-
-export const isInCheckmate = (data: GameData, color: "white" | "black") => {
-  const cached = gameStateCache.getIsCheckMate(data, color);
-  if (cached !== undefined) {
-    return cached;
-  }
-  const state = data.state;
-  for (let row = 0; row < 8; row++) {
-    for (let col = 0; col < 8; col++) {
-      const piece = state.piecesByLocation[row][col];
-      if (piece && piece.color === color) {
-        const allowedMoves = getAllowedMoves(piece, data);
-        const allowedMovesWithoutCheck = filterAllowedMoves(
-          piece,
-          allowedMoves,
-          data
-        );
-        if (allowedMovesWithoutCheck.length > 0) {
-          gameStateCache.setIsCheckMate(data, color, false);
-          return false;
-        }
-      }
-    }
-  }
-  gameStateCache.setIsCheckMate(data, color, true);
-  return true;
 };

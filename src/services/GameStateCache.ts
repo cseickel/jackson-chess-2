@@ -1,5 +1,5 @@
-import { GameData, Piece, Position } from "../Context/GameData";
-import { getAllowedMoves } from "./movement";
+import { GameData, Piece, PieceType, Position } from "../Context/GameData";
+import { applyMove, getAllowedMoves } from "./movement";
 
 class StateCacheData {
   public allowedMovesByPosition: Array<Array<Array<Position>>>;
@@ -17,11 +17,59 @@ class StateCacheData {
       for (let col = 0; col < 8; col++) {
         const piece = data.state.piecesByLocation[row][col];
         if (piece) {
+          console.log("getting allowed moves for", piece.name);
           this.piecePosition.set(piece.id, { row, col });
-          this.allowedMovesByPosition[row][col] = getAllowedMoves(piece, data);
+          const allowedMoves = getAllowedMoves(piece, data);
+          const allowedMovesWithoutCheck = this.getMovesWithoutSelfCheck(
+            data,
+            piece,
+            { row, col },
+            allowedMoves
+          );
+          this.allowedMovesByPosition[row][col] = allowedMovesWithoutCheck;
         }
       }
     }
+  }
+
+  private getMovesWithoutSelfCheck(
+    data: GameData,
+    _piece: Piece,
+    position: Position,
+    moves: Position[]
+  ): Array<Position> {
+    const piece = { ..._piece, position };
+    return moves.filter((move) => {
+      const newState = applyMove(piece, move, data, false);
+      return !newState.playerInCheck;
+    });
+  }
+
+  private calculateIsCheckMate(data: GameData, color: string): boolean {
+    return false;
+    this.piecePosition.forEach((pos, id) => {
+      const piece = Piece.fromId(id);
+      if (piece && piece.color === color) {
+        const allowedMoves = this.getAllowedMoves(piece);
+        if (allowedMoves.length > 0) {
+          return false;
+        }
+      }
+    });
+    gameStateCache.setIsCheckMate(data, color, true);
+    console.log("Checkmate");
+    return true;
+  }
+
+  getIsCheckMate(data: GameData, color: string): boolean {
+    const cached = this.isCheckMate.get(color);
+    if (cached !== undefined) {
+      console.log("Using cached isCheckMate");
+      return cached;
+    }
+    const result = this.calculateIsCheckMate(data, color);
+    this.isCheckMate.set(color, result);
+    return result;
   }
 
   getAllowedMoves(piece: Piece): Array<Position> {
@@ -42,7 +90,24 @@ class GameStateCache {
   }
 
   getKey(data: GameData) {
-    return JSON.stringify(data.state.piecesByLocation);
+    if (data.state.key) {
+      return data.state.key;
+    }
+    let ids = [];
+    for (let row = 0; row < 8; row++) {
+      ids.push(new Array(8));
+      for (let col = 0; col < 8; col++) {
+        const piece = data.state.piecesByLocation[row][col];
+        if (piece) {
+          ids[row][col] = piece.id;
+        } else {
+          ids[row][col] = 0;
+        }
+      }
+    }
+    const key = JSON.stringify(ids);
+    data.state.key = key;
+    return key;
   }
 
   getCached(data: GameData) {
@@ -77,7 +142,12 @@ class GameStateCache {
 
   getIsCheckMate(data: GameData, color: string) {
     const cached = this.getCached(data);
-    return cached.isCheckMate.get(color);
+    return cached.getIsCheckMate(data, color);
+  }
+
+  getPiecePosition(data: GameData, piece: Piece) {
+    const cached = this.getCached(data);
+    return cached.piecePosition.get(piece.id);
   }
 }
 

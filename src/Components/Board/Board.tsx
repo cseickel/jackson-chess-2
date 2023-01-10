@@ -1,11 +1,7 @@
 import { useContext, useMemo, useState, useCallback } from "react";
 import { GameDataContext, Piece, Position } from "../../Context/GameData";
 import { gameStateCache } from "../../services/GameStateCache";
-import {
-  filterAllowedMoves,
-  getAllowedMoves,
-  movePiece,
-} from "../../services/movement";
+import { movePiece } from "../../services/movement";
 import { Square, SquareProps } from "./Sqaure";
 
 const Board = () => {
@@ -31,12 +27,7 @@ const Board = () => {
           context,
           clickedPiece
         );
-        const nonCheckingMoves = filterAllowedMoves(
-          clickedPiece,
-          allowedMoves,
-          context
-        );
-        setAllowedMoves(nonCheckingMoves);
+        setAllowedMoves(allowedMoves);
       }
     },
     [allowedMoves, context, selectedPiece, setSelectedPiece, setAllowedMoves]
